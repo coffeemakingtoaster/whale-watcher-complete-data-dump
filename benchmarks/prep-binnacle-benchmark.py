@@ -2,7 +2,7 @@
 import subprocess
 import os
 import shlex
-from parse import parse_hits
+from parse import parse_hits, print_rule_hits
 import shutil
 
 
@@ -20,12 +20,34 @@ def copy_dataset_to_binnacle():
             dockerfile = os.path.join(subdir_path, "Dockerfile")
             if not os.path.exists(dockerfile):
                 print(f"⚠️ Skipping {subdir_path}, no dockerfile found")
+                continue
             src_file = os.path.join(dockerfile)
             dst_file = os.path.join(dst_dir, f"{subdir}.Dockerfile")
             shutil.copy(src_file, dst_file)
             print(f"Copied {src_file} → {dst_file}")
 
     run(f"tar -cf - {dst_dir}/ | xz -z -9 > ./binnacle/datasets/0b-deduplicated-dockerfile-sources/gold.tar.xz", executable='/bin/sh', shell=True)
+
+def run_whale_watcher():
+    src_dir = "./scraper/testdata"
+    out_dir = "./ww_out"
+
+    os.makedirs(out_dir, exist_ok=True)
+
+    for subdir in os.listdir(src_dir):
+        subdir_path = os.path.join(src_dir, subdir)
+        if os.path.isdir(subdir_path):
+            # Expect exactly one file inside
+            dockerfile = os.path.join(subdir_path, "Dockerfile")
+            dockertar = os.path.join(subdir_path, "docker.tar")
+            ocitar = os.path.join(subdir_path, "oci.tar")
+            if not all([os.path.exists(f) for f in [dockerfile, dockertar, ocitar]]):
+                print(f"⚠️ Skipping {subdir_path}, needed files incomplete")
+                continue
+            outfile = os.path.join(out_dir, f"{subdir}.out")
+            cmd = f'WHALE_WATCHER_TARGET_DOCKERFILE="{dockerfile}" WHALE_WATCHER_TARGET_DOCKER_PATH="{dockertar}" WHALE_WATCHER_TARGET_OCI_PATH="{ocitar}" whale-watcher validate ./ruleset.yaml > {outfile}'
+            run(cmd, shell=True)
+
 
 def run_binnacle_data_pipeline():
     cwd = "./binnacle/datasets"
@@ -40,13 +62,13 @@ def run_binnacle_data_pipeline():
     run(cmd, cwd=cwd, shell=True)
 
 
-
 def run(cmd, cwd=None, shell=False, executable="/bin/bash"):
     print(f"\n>>> Running: {cmd}")
     if shell:
         subprocess.run(cmd, shell=True, check=True, cwd=cwd, executable=executable)
     else:
         subprocess.run(shlex.split(cmd), check=True, cwd=cwd, executable=executable)
+
 
 def main():
     print("Preparing binnacle image...")
@@ -59,11 +81,9 @@ def main():
 
     print("Rebuilding archives for binnacle")
 
-    copy_dataset_to_binnacle()
+    #copy_dataset_to_binnacle()
 
-    run_binnacle_data_pipeline()
-
-    exit(1)
+    #run_binnacle_data_pipeline()
 
     print("Running binnacle")
 
@@ -72,20 +92,13 @@ def main():
         shell=True
     )
 
-    run("tar -xvJf ./binnacle/datasets/0a-original-dockerfile-sources/gold.tar.xz")
-
     print("Run whalewatcher")
 
-    sources_gold = "./sources-gold"
-    for fname in os.listdir(sources_gold):
-        if fname.endswith(".Dockerfile"):
-            fpath = os.path.join(sources_gold, fname)
-            print(fpath)
-            cmd = f'WHALE_WATCHER_TARGET_DOCKERFILE="{fpath}" whale-watcher validate ./ruleset.yaml > {fpath}.out'
-            run(cmd, shell=True)
+    run_whale_watcher()
 
+    res = parse_hits()
 
-    parse_hits()
+    print_rule_hits(res)
 
 if __name__ == "__main__":
     main()
