@@ -1,0 +1,6 @@
+[submodule "whale-watcher-source"]
+	path = whale-watcher-source
+	url = git@github.com:coffeemakingtoaster/whale-watcher.git
+[submodule "benchmarks/binnacle"]
+	path = benchmarks/binnacle
+	url = git@github.com:jjhenkel/binnacle-icse2020.git
