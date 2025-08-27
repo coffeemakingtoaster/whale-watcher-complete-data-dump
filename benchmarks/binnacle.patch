@@ -1,0 +1,122 @@
+diff --git a/datasets/1-phase-1-dockerfile-asts/generate/Dockerfile b/datasets/1-phase-1-dockerfile-asts/generate/Dockerfile
+index 30a841b..a78faa7 100644
+--- a/datasets/1-phase-1-dockerfile-asts/generate/Dockerfile
++++ b/datasets/1-phase-1-dockerfile-asts/generate/Dockerfile
+@@ -1,4 +1,4 @@
+-FROM python:3.7.6-slim-stretch
++FROM python:3.11-trixie
+ 
+ RUN apt-get update \
+   && apt-get install -y --no-install-recommends xz-utils \
+diff --git a/datasets/2-phase-2-dockerfile-asts/generate/Dockerfile b/datasets/2-phase-2-dockerfile-asts/generate/Dockerfile
+index b9595ea..580aa41 100644
+--- a/datasets/2-phase-2-dockerfile-asts/generate/Dockerfile
++++ b/datasets/2-phase-2-dockerfile-asts/generate/Dockerfile
+@@ -1,27 +1,22 @@
+-FROM haskell:8.0.2
+-
+-RUN git clone \
+-    https://github.com/koalaman/shellcheck.git \
+-    /shellcheck \
+-  && cd /shellcheck \
+-  && git checkout 37e78141bd57f56b2a8d7ec0c91e76edec6a9dc5 \
+-  && cabal update \
+-  && cabal install \
+-  && cabal build
+-
+-RUN echo "deb http://archive.debian.org/debian jessie-backports main" \
+-    > /etc/apt/sources.list.d/jessie-backports.list; \
+-  sed -i '/deb http:\/\/deb.debian.org\/debian jessie-updates main/d' /etc/apt/sources.list; \
+-  apt-get -o Acquire::Check-Valid-Until=false update; \
+-  apt-get install -y --no-install-recommends jq python3 python3-pip   
+-
+-RUN pip3 install tqdm==4.27.0
++FROM haskell:9.10-bullseye AS build
+ 
+ WORKDIR /app
+ 
++RUN cabal update && cabal install --lib ShellCheck-0.10.0
++
+ COPY app.hs /build/
+ 
+-RUN ghc /build/app.hs
++RUN ghc -package containers -package mtl -package bytestring -package aeson -package text -package parsec -package ShellCheck /build/app.hs
++
++FROM python:3.11-trixie AS runtime
++
++RUN apt-get update && apt-get install -y --no-install-recommends jq shellcheck
++
++RUN pip3 install tqdm==4.27.0
++
++WORKDIR /app
++
++COPY --from=build /build/app /build/app
+ 
+ COPY filter-*.jq /filters/
+ 
+diff --git a/datasets/2-phase-2-dockerfile-asts/generate/app.hs b/datasets/2-phase-2-dockerfile-asts/generate/app.hs
+index ca1da9d..f0a2d33 100755
+--- a/datasets/2-phase-2-dockerfile-asts/generate/app.hs
++++ b/datasets/2-phase-2-dockerfile-asts/generate/app.hs
+@@ -43,19 +43,20 @@ deriving instance Generic Quoted
+ deriving instance ToJSON Quoted
+ deriving instance Generic Annotation
+ deriving instance ToJSON Annotation
++
++-- Derive Generic instances first
+ deriving instance Generic Token
++deriving instance Generic (InnerToken Token)
++
++-- Then derive ToJSON instances together
+ deriving instance ToJSON Token
++deriving instance ToJSON (InnerToken Token)
+ 
+ getBash value =
+   prRoot (runIdentity $ (parseScript (mockedSystemInterface []) $ newParseSpec {
+     psFilename = "debug", psScript = value
+   }))
+ 
+--- Goal: read one line of input (which represents some embedded bash)
+---  + Try to parse this line
+---    + If it does return the serialized repsone!
+---    + If not maybe return a 'UNKNOWN' ast node or something of that sort?
+-
+ main = do
+   line <- getLine
+   case getBash line of
+diff --git a/datasets/3-phase-3-dockerfile-asts/generate/Dockerfile b/datasets/3-phase-3-dockerfile-asts/generate/Dockerfile
+index 1b1d35b..d99a6b6 100755
+--- a/datasets/3-phase-3-dockerfile-asts/generate/Dockerfile
++++ b/datasets/3-phase-3-dockerfile-asts/generate/Dockerfile
+@@ -1,4 +1,4 @@
+-FROM node:11.15.0-stretch
++FROM node:22.18.0-trixie
+ 
+ RUN npm install -g \
+   typescript \
+@@ -11,7 +11,7 @@ ENV NODE_PATH=/usr/local/lib/node_modules
+ 
+ RUN apt-get update \
+   && apt-get install -y --no-install-recommends python3 python3-pip \
+-  && pip3 install tqdm \
++  && pip3 install --break-system-packages tqdm \
+   && rm -rf /var/lib/apt/lists/*
+ 
+ RUN echo '#!/bin/bash\ntsc && node /build/app.js $@' > /run.sh \
+diff --git a/datasets/4-abstracted-asts/generate/Dockerfile b/datasets/4-abstracted-asts/generate/Dockerfile
+index 76df512..38e933b 100644
+--- a/datasets/4-abstracted-asts/generate/Dockerfile
++++ b/datasets/4-abstracted-asts/generate/Dockerfile
+@@ -1,10 +1,10 @@
+-FROM python:3.7.6-slim-stretch
++FROM python:3.11-trixie
+ 
+ RUN apt-get update \
+   && apt-get install -y --no-install-recommends xz-utils \
+   && rm -rf /var/apt/lists*
+ 
+-RUN pip install --no-cache tqdm
++RUN pip install --no-cache --break-system-packages tqdm
+ 
+ COPY . /app/
+ 

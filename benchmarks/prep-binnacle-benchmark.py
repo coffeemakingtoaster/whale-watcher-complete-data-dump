@@ -1,10 +1,8 @@
-
 import subprocess
 import os
 import shlex
 from parse import parse_hits, print_rule_hits
 import shutil
-
 
 def copy_dataset_to_binnacle():
     src_dir = "./scraper/testdata"
@@ -27,6 +25,7 @@ def copy_dataset_to_binnacle():
             print(f"Copied {src_file} → {dst_file}")
 
     run(f"tar -cf - {dst_dir}/ | xz -z -9 > ./binnacle/datasets/0b-deduplicated-dockerfile-sources/gold.tar.xz", executable='/bin/sh', shell=True)
+
 
 def run_whale_watcher():
     src_dir = "./scraper/testdata"
@@ -54,10 +53,10 @@ def run_binnacle_data_pipeline():
 
     # Deduplication loop
     cmd = r'''
-        sh ./1-phase-1-dockerfile-asts/generate.sh
-        sh ./2-phase-2-dockerfile-asts/generate.sh
-        sh ./3-phase-3-dockerfile-asts/generate.sh
-        sh ./4-abstracted-asts/generate.sh
+        /bin/bash ./1-phase-1-dockerfile-asts/generate.sh
+        /bin/bash ./2-phase-2-dockerfile-asts/generate.sh
+        /bin/bash ./3-phase-3-dockerfile-asts/generate.sh
+        /bin/bash ./4-abstracted-asts/generate.sh
     '''
     run(cmd, cwd=cwd, shell=True)
 
@@ -77,13 +76,18 @@ def main():
 
     print("Preparing data")
 
-    #run("sh ./setup.sh", cwd="./scraper")
+    run("sh ./setup.sh", cwd="./scraper")
+
+    print("Patching binnacle")
+
+    run("cd ./binnacle && git apply ../binnacle.patch")
+
 
     print("Rebuilding archives for binnacle")
 
-    #copy_dataset_to_binnacle()
+    copy_dataset_to_binnacle()
 
-    #run_binnacle_data_pipeline()
+    run_binnacle_data_pipeline()
 
     print("Running binnacle")
 
