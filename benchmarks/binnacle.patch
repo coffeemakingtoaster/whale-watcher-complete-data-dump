@@ -120,3 +120,260 @@ index 76df512..38e933b 100644
  
  COPY . /app/
  
+diff --git a/datasets/1-phase-1-dockerfile-asts/generate/app.py b/datasets/1-phase-1-dockerfile-asts/generate/app.py
+index 0b80d11..c3a543f 100644
+--- a/datasets/1-phase-1-dockerfile-asts/generate/app.py
++++ b/datasets/1-phase-1-dockerfile-asts/generate/app.py
+@@ -1,12 +1,14 @@
+-if __name__ == '__main__':
+-  import os
+-  import sys
+-  import json
+-  import tqdm
+-  import lzma
+-  import dockerfile
+-  import multiprocessing
++import os
++import sys
++import json
++import tqdm
++import lzma
++import dockerfile
++import multiprocessing
++
+ 
++if __name__ == '__main__':
++
+ 
+   def process(item):
+     VALID_DIRECTIVES = [
+@@ -40,11 +42,11 @@ if __name__ == '__main__':
+ 
+       # Check directives
+       for directive in parsed:
+-        if directive.cmd not in VALID_DIRECTIVES:
++        if directive.cmd.lower() not in VALID_DIRECTIVES:
+           # Not valid dockerfile
+           raise Exception('found invalid directive {}'.format(directive.cmd))
+ 
+-        if directive.cmd == 'run':
++        if directive.cmd.lower() == 'run':
+           dockerfile_ast['children'].append({
+             'type': 'DOCKER-RUN',
+             'children': [{
+@@ -53,7 +55,7 @@ if __name__ == '__main__':
+               'children': []
+             }]
+           })
+-        elif directive.cmd == 'from':
++        elif directive.cmd.lower() == 'from':
+           from_node = {
+             'type': 'DOCKER-FROM',
+             'children': []
+@@ -84,7 +86,7 @@ if __name__ == '__main__':
+             })
+         
+           dockerfile_ast['children'].append(from_node)
+-        elif directive.cmd == 'copy':
++        elif directive.cmd.lower() == 'copy':
+           copy_node = {
+             'type': 'DOCKER-COPY',
+             'children': []
+@@ -110,7 +112,7 @@ if __name__ == '__main__':
+             })
+           
+           dockerfile_ast['children'].append(copy_node)
+-        elif directive.cmd == 'add':
++        elif directive.cmd.lower() == 'add':
+           add_node = {
+             'type': 'DOCKER-ADD',
+             'children': []
+@@ -136,7 +138,7 @@ if __name__ == '__main__':
+             })
+           
+           dockerfile_ast['children'].append(add_node)
+-        elif directive.cmd == 'expose':
++        elif directive.cmd.lower() == 'expose':
+           dockerfile_ast['children'].append({
+             'type': 'DOCKER-EXPOSE',
+             'children': [{
+@@ -145,7 +147,7 @@ if __name__ == '__main__':
+               'children': []
+             }]
+           })
+-        elif directive.cmd == 'workdir':
++        elif directive.cmd.lower() == 'workdir':
+           dockerfile_ast['children'].append({
+             'type': 'DOCKER-WORKDIR',
+             'children': [{
+@@ -154,7 +156,7 @@ if __name__ == '__main__':
+               'children': []
+             }]
+           })
+-        elif directive.cmd == 'volume':
++        elif directive.cmd.lower() == 'volume':
+           for arg in directive.value:
+             dockerfile_ast['children'].append({
+               'type': 'DOCKER-VOLUME',
+@@ -164,7 +166,7 @@ if __name__ == '__main__':
+                 'children': []
+               }]
+             })
+-        elif directive.cmd == 'arg':
++        elif directive.cmd.lower() == 'arg':
+           arg_node = {
+             'type': 'DOCKER-ARG',
+             'children': [{
+@@ -182,7 +184,7 @@ if __name__ == '__main__':
+             })
+ 
+           dockerfile_ast['children'].append(arg_node)
+-        elif directive.cmd == 'env':
++        elif directive.cmd.lower() == 'env':
+           for name, value in zip(directive.value[::2], directive.value[1::2]):
+             dockerfile_ast['children'].append({
+               'type': 'DOCKER-ENV',
+@@ -196,7 +198,7 @@ if __name__ == '__main__':
+                 'children': []
+               }]
+             })
+-        elif directive.cmd == 'entrypoint':
++        elif directive.cmd.lower() == 'entrypoint':
+           first = directive.value[0]
+ 
+           entrypoint_node = {
+@@ -216,7 +218,7 @@ if __name__ == '__main__':
+             })
+ 
+           dockerfile_ast['children'].append(entrypoint_node)
+-        elif directive.cmd == 'cmd':
++        elif directive.cmd.lower() == 'cmd':
+           cmd_node = {
+             'type': 'DOCKER-CMD',
+             'children': []
+@@ -230,7 +232,7 @@ if __name__ == '__main__':
+             })
+ 
+           dockerfile_ast['children'].append(cmd_node)
+-        elif directive.cmd == 'shell':
++        elif directive.cmd.lower() == 'shell':
+           first = directive.value[0]
+ 
+           shell_node = {
+@@ -250,7 +252,7 @@ if __name__ == '__main__':
+             })
+ 
+           dockerfile_ast['children'].append(shell_node)
+-        elif directive.cmd == 'user':
++        elif directive.cmd.lower() == 'user':
+           dockerfile_ast['children'].append({
+             'type': 'DOCKER-USER',
+             'children': [{
+@@ -267,6 +269,7 @@ if __name__ == '__main__':
+       return json.dumps(dockerfile_ast)
+ 
+     except Exception as ex:
++      print(ex)
+       return None
+ 
+ 
+@@ -280,7 +283,8 @@ if __name__ == '__main__':
+           dockerfile.parse_string(dfh.read()),
+           line.strip()
+         ))
+-      except Exception:
++      except Exception as ex:
++        print(ex)
+         continue
+     
+   results = pool.imap(process, all_lines, chunksize=500)
+@@ -288,5 +292,6 @@ if __name__ == '__main__':
+   with lzma.open('/mnt/outputs/{}.jsonl.xz'.format(sys.argv[1]), mode='wt') as out_file:
+     for result in tqdm.tqdm(results, total=len(all_lines), desc="Generating"):
+       if result is None:
++        print("No result :/")
+         continue
+       out_file.write('{}\n'.format(result))
+diff --git a/experiments/3-static-rule-enforcement/experiment/Dockerfile b/experiments/3-static-rule-enforcement/experiment/Dockerfile
+index 2bcd6fb..9e8a717 100644
+--- a/experiments/3-static-rule-enforcement/experiment/Dockerfile
++++ b/experiments/3-static-rule-enforcement/experiment/Dockerfile
+@@ -1,11 +1,10 @@
+-FROM node:11.15.0-stretch
++FROM node:22
+ 
+-RUN echo '#!/bin/bash\ntsc && node /build/app.js $@' > /run.sh \
+-  && chmod +x /run.sh && apt-get update && apt-get install -y --no-install-recommends jq 
++RUN echo '#!/bin/bash\ntsc && node /build/app.js $@' > /run.sh && chmod +x /run.sh && apt-get update && apt-get install -y --no-install-recommends jq
+ 
+ RUN npm install -g \
+   typescript \
+-  @types/node@12.12.23 \
++  @types/node \
+   threads
+ 
+ ENV NODE_PATH=/usr/local/lib/node_modules
+@@ -14,4 +13,4 @@ WORKDIR /app
+ 
+ COPY . /app/
+ 
+-ENTRYPOINT [ "/app/entrypoint.sh" ]
+\ No newline at end of file
++ENTRYPOINT [ "/app/entrypoint.sh" ]
+diff --git a/experiments/3-static-rule-enforcement/experiment/entrypoint.sh b/experiments/3-static-rule-enforcement/experiment/entrypoint.sh
+index b40d0df..e1d2307 100755
+--- a/experiments/3-static-rule-enforcement/experiment/entrypoint.sh
++++ b/experiments/3-static-rule-enforcement/experiment/entrypoint.sh
+@@ -8,6 +8,10 @@ echo "Running..."
+ cat "${1}" | xz -cd | node /build/app.js \
+   > /out/results-${2}-individual.txt
+ 
++echo "Next"
++
++cat /out/results-${2}-individual.txt
++
+ cat /out/results-${2}-individual.txt | jq -s ' [
+ reduce (.[] | to_entries[]) as {$key,$value} (
+     {};
+@@ -23,8 +27,8 @@ reduce (.[] | to_entries[]) as {$key,$value} (
+     "support": .value.matches,
+     "confirmations": .value.confirmations,
+     "violations": .value.violations,
+-    "confidence": (100.0 * (.value.confirmations / .value.matches)),
+-    "violationRate": (100.0 * (.value.violations / .value.matches))
++    "confidence": (if .value.matches == 0 then 0 else (100.0 * (.value.confirmations / .value.matches)) end),
++    "violationRate": (if .value.matches == 0 then 0 else (100.0 * (.value.violations / .value.matches)) end)
+   }
+ }
+ ] | add'  > /out/results-${2}-summary.txt
+diff --git a/datasets/2-phase-2-dockerfile-asts/generate/app.py b/datasets/2-phase-2-dockerfile-asts/generate/app.py
+index 39612c6..97ed67e 100755
+--- a/datasets/2-phase-2-dockerfile-asts/generate/app.py
++++ b/datasets/2-phase-2-dockerfile-asts/generate/app.py
+@@ -21,6 +21,17 @@ if __name__ == '__main__':
+         stderr=subprocess.DEVNULL,
+         input=bash_str.encode('utf-8')
+       )
++      data = json.loads(step1.decode('utf-8'))
++      if isinstance(data, list):
++        if data[0] != 1:
++            print("Unexpected value. This may be worth investigating")
++            print(data)
++        step1 = subprocess.check_output(
++          ['jq', '-c', '.[1]'],
++          stderr=subprocess.DEVNULL,
++          input=step1
++        )
++
+       phase = 1
+       # print(json.dumps(json.loads(step1.decode('utf-8'))), flush=True)
+       step2 = subprocess.check_output(
+@@ -38,6 +49,8 @@ if __name__ == '__main__':
+       phase = 3
+       parsed = json.loads(step3.decode('utf-8'))
+     except Exception as ex:
++      print(ex)
++      print(step1)
+       return { 'type': 'UNKNOWN', 'children': [] }
+     return parsed
+ 

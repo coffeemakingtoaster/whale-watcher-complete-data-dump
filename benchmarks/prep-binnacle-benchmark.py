@@ -4,7 +4,7 @@ import shlex
 from parse import parse_hits, print_rule_hits
 import shutil
 
-def copy_dataset_to_binnacle():
+def copy_dataset_to_binnacle(): 
     src_dir = "./scraper/testdata"
     dst_dir = "./binnacle/datasets/deduplicated-sources"
 
@@ -70,17 +70,16 @@ def run(cmd, cwd=None, shell=False, executable="/bin/bash"):
 
 
 def main():
-    print("Preparing binnacle image...")
-
-    run("docker build -t binnacle/artifact:experiment-3 -f ./binnacle.Dockerfile ./binnacle/experiments/3-static-rule-enforcement/experiment", shell=True)
-
     print("Preparing data")
 
-    run("sh ./setup.sh", cwd="./scraper")
+#    run("sh ./setup.sh", cwd="./scraper")
 
     print("Patching binnacle")
 
-    run("cd ./binnacle && git apply ../binnacle.patch")
+    try:
+        run("git apply ../binnacle.patch", cwd="./binnacle", shell=True)
+    except:
+        print("git apply failed, this does not necessarily mean failure")
 
 
     print("Rebuilding archives for binnacle")
@@ -91,10 +90,12 @@ def main():
 
     print("Running binnacle")
 
-    run(
-        'docker run -it --rm -v "./binnacle/datasets:/datasets" -v "./out:/out" binnacle/artifact:experiment-3 /datasets/4-abstracted-asts/gold.jsonl.xz gold',
-        shell=True
+    run('/bin/bash run.sh',
+        shell=True,
+        cwd='./binnacle/experiments/3-static-rule-enforcement',
     )
+
+    shutil.copy("./binnacle/experiments/3-static-rule-enforcement/experiment/results-gold-summary.txt", './out/results-gold-summary.txt')
 
     print("Run whalewatcher")
 
