@@ -1,0 +1,5 @@
+target:
+  dockerfile: ./prod.Dockerfile 
+log_level: 2
+no_fix: true
+target_list: command

@@ -1,0 +1,48 @@
+Repo=https://github.com/docker-library/golang/blob/master/Dockerfile-windows-nanoserver.template 
+-> golang windows nanoserver Date=2019-06-25T01:52:59
+Repo=https://github.com/docker-library/tomcat/blob/master/8.5/jdk8/openjdk/Dockerfile Date=2019-06-25T03:08:56
+-> tomcat 8.5 jdk 8 openjdk
+Repo=https://github.com/docker-library/nginx/blob/master/1.6/Dockerfile Date=2019-06-25T00:59:48
+-> nginx 1.6
+Repo=https://github.com/docker-library/php/blob/master/7.2/alpine3.9/zts/Dockerfile Date=2019-06-25T01:57:45
+-> php 7.2 alpine 3.9
+Repo=https://github.com/docker-library/ruby/blob/master/2.4/stretch/slim/Dockerfile Date=2019-06-24T23:01:42
+-> ruby 2.4 stretch slim
+Repo=https://github.com/docker-library/ghost/blob/master/2/debian/Dockerfile Date=2019-06-25T01:25:19
+-> ghost 2 debian
+Repo=https://github.com/docker-library/pypy/blob/master/Dockerfile-slim.template Date=2019-06-25T04:06:00
+-> pypy Dockerfile slim
+Repo=https://github.com/docker-library/haproxy/blob/master/1.5/alpine/Dockerfile Date=2019-06-25T03:36:24
+-> :wq:w
+Repo=https://github.com/docker-library/docs/blob/master/Dockerfile Date=2019-06-25T02:00:16
+Repo=https://github.com/docker-library/django/blob/master/2.7/Dockerfile Date=2019-06-25T03:45:16
+Repo=https://github.com/docker-library/elasticsearch/blob/master/6/Dockerfile Date=2019-06-25T04:28:56
+Repo=https://github.com/docker-library/rabbitmq/blob/master/3.7/ubuntu/management/Dockerfile Date=2019-06-25T04:00:47
+Repo=https://github.com/docker-library/gcc/blob/master/9/Dockerfile Date=2019-06-24T23:46:08
+Repo=https://github.com/docker-library/mariadb/blob/master/10.2/Dockerfile Date=2019-06-25T03:37:06
+Repo=https://github.com/docker-library/httpd/blob/master/2.4/Dockerfile Date=2019-06-25T03:09:09
+Repo=https://github.com/docker-library/memcached/blob/master/alpine/Dockerfile Date=2019-06-25T04:23:42
+Repo=https://github.com/docker-library/cassandra/blob/master/3.0/Dockerfile Date=2019-06-25T06:08:19
+Repo=https://github.com/docker-library/healthcheck/blob/master/mysql/Dockerfile.percona Date=2019-06-25T07:26:07
+Repo=https://github.com/docker-library/buildpack-deps/blob/master/jessie/Dockerfile Date=2019-06-25T05:26:22
+Repo=https://github.com/docker-library/drupal/blob/master/8.6/fpm-alpine/Dockerfile Date=2019-06-25T05:56:04
+Repo=https://github.com/docker-library/docker/blob/master/Dockerfile-windows-windowsservercore.template Date=2019-06-25T05:53:11
+Repo=https://github.com/docker-library/julia/blob/master/Dockerfile-windowsservercore.template Date=2019-06-25T05:43:24
+Repo=https://github.com/docker-library/repo-info/blob/master/Dockerfile.local Date=2019-06-25T09:17:40
+Repo=https://github.com/docker-library/celery/blob/master/3.1/Dockerfile Date=2019-06-25T08:26:53
+Repo=https://github.com/docker-library/percona/blob/master/5.6/Dockerfile Date=2019-06-25T08:21:37
+Repo=https://github.com/docker-library/owncloud/blob/master/10.0/apache/Dockerfile Date=2019-06-25T23:27:39
+Repo=https://github.com/docker-library/kibana/blob/master/Dockerfile.template Date=2019-06-25T23:23:42
+Repo=https://github.com/docker-library/redmine/blob/master/4.0/passenger/Dockerfile Date=2019-06-26T00:20:26
+Repo=https://github.com/docker-library/python/blob/master/3.7/windows/windowsservercore-ltsc2016/Dockerfile Date=2019-06-26T05:04:42
+Repo=https://github.com/docker-library/wordpress/blob/master/php7.2/apache/Dockerfile Date=2019-06-26T05:06:20
+Repo=https://github.com/docker-library/official-images/blob/master/Dockerfile Date=2019-06-26T05:11:28
+Repo=https://github.com/docker-library/mysql/blob/master/5.6/Dockerfile Date=2019-06-26T04:30:36
+Repo=https://github.com/docker-library/busybox/blob/master/musl/Dockerfile Date=2019-06-26T01:26:29
+Repo=https://github.com/docker-library/rails/blob/master/Dockerfile Date=2019-06-26T03:39:05
+Repo=https://github.com/docker-library/openjdk/blob/master/12/jdk/windows/windowsservercore-1809/Dockerfile Date=2019-06-26T05:58:45
+Repo=https://github.com/docker-library/redis/blob/master/5.0/32bit/Dockerfile Date=2019-06-26T05:19:09
+Repo=https://github.com/docker-library/postgres/blob/master/9.5/Dockerfile Date=2019-06-26T05:19:55
+Repo=https://github.com/docker-library/mongo/blob/master/4.1/Dockerfile Date=2019-06-26T05:51:14
+Repo=https://github.com/docker-library/hello-world/blob/master/arm64v8/hello-world/Dockerfile Date=2019-06-26T05:23:16
+Repo=https://github.com/docker-library/node/blob/master/0.11/onbuild/Dockerfile Date=2019-06-26T05:57:16
