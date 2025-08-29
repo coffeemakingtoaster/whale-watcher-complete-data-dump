@@ -1,14 +1,5 @@
 name: Big Ruleset
 rules:
-  # Errors!
-  - scope: output
-    id: DL3000
-    target: command
-    description: use absolut workdir
-    instruction: |
-
-
-
   - scope: output
     category: Negative
     instruction: |
