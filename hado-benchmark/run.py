@@ -75,11 +75,11 @@ def run_whale_watcher(filelist):
     return time.time() - start
 
 if __name__ == "__main__":
-    files = get_filelist("./deduplicated-sources-gold/")
-    #hado = run_hadolint(filelist=files)
-    #ww = run_whale_watcher(filelist=files)
-    #print(f"hado: {hado}")
-    #print(f"ww: {ww}")
+    files = get_filelist("./dataset/")
+    hado = run_hadolint(filelist=files)
+    ww = run_whale_watcher(filelist=files)
+    print(f"hado: {hado}")
+    print(f"ww: {ww}")
     ww_results = parse_ww()
     hado_results = parse_hado()
 
