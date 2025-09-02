@@ -1,38 +1,61 @@
 from os import listdir, makedirs
-from os.path import isfile, join, basename
+from os.path import exists, isfile, join, basename
 import subprocess
 import shlex
 import time
 from collections import defaultdict
 import json
+import re
+from tqdm import tqdm
+
+relevant_ids = [
+    "DL3000",
+    "DL3004",
+    "DL3011",
+    "DL3012",
+    "DL3020",
+    "DL3021",
+    "DL3023",
+    "DL3024",
+    "DL3026",
+    "DL3043",
+    "DL3044",
+    "DL3061",
+    "DL4000",
+    "DL4004",
+]
+
+def convert_to_dataset_file(path: str) -> str:
+    path = path.replace("ww_out", "dataset")
+    path = path.replace("hado_out", "dataset")
+    return path.rstrip(".out")
 
 def parse_hado():
-    violation_results = defaultdict(lambda: 0)
+    violation_results = defaultdict(lambda: [])
     all_files = get_filelist("./hado_out/")
-    for file in all_files:
+    for file in tqdm(all_files, desc="Hadolint parse"):
         with open(file) as f:
             data = json.load(f)
         for entry in data:
             key = entry["code"]
-            violation_results[key] += 1
+            violation_results[key].append(convert_to_dataset_file(file))
 
     return violation_results
 
 def parse_ww():
-    violation_results = defaultdict(lambda: 0)
+    violation_results = defaultdict(lambda: [])
     all_files = get_filelist("./ww_out/")
-    for file in all_files:
+
+    ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+    for file in tqdm(all_files, desc="ww parse"):
         with open(file) as f:
             lines = f.readlines()
         for line in lines:
-            if not "ruleId=" in line:
-                continue
-            line = line.strip()
-            ind = line.find("ruleId=")
-            line = line[ind:]
-            line = line.lstrip("ruleId=")
-            rule_id = line.replace('"', "")
-            violation_results[rule_id] += 1
+            line = ansi_escape.sub('', line)
+            title_search = re.search(r".*ruleId=([^\s]+)",line, re.IGNORECASE)
+            if title_search:
+                rule_id = title_search.group(1)
+                violation_results[rule_id].append(convert_to_dataset_file(file))
 
     return violation_results
 
@@ -53,7 +76,7 @@ def run_hadolint(filelist):
     makedirs(out_dir, exist_ok=True)
 
     start = time.time()
-    for dockerfile in filelist:
+    for dockerfile in tqdm(filelist, desc="Hadolint run"):
         outfile = join(out_dir, f"{basename(dockerfile)}.out")
         run(f'hadolint -f json --no-fail {dockerfile}> {outfile}', shell=True)
     return time.time() - start
@@ -67,7 +90,7 @@ def run_whale_watcher(filelist):
 
     start = time.time()
 
-    for dockerfile in filelist:
+    for dockerfile in tqdm(filelist, desc="Hadolint run"):
         outfile = join(out_dir, f"{basename(dockerfile)}.out")
         cmd = f'WHALE_WATCHER_TARGET_DOCKERFILE="{dockerfile}" whale-watcher validate ./ruleset.yaml > {outfile}'
         run(cmd, shell=True)
@@ -75,14 +98,24 @@ def run_whale_watcher(filelist):
     return time.time() - start
 
 if __name__ == "__main__":
-    files = get_filelist("./dataset/")
-    hado = run_hadolint(filelist=files)
-    ww = run_whale_watcher(filelist=files)
-    print(f"hado: {hado}")
-    print(f"ww: {ww}")
+    if exists("./ww_out/") and exists("./hado_out/"):
+        print("Skipping benchmark execution, outputs already present")
+    else:
+        files = get_filelist("./dataset/")
+        hado = run_hadolint(filelist=files)
+        ww = run_whale_watcher(filelist=files)
+        print(f"hado: {hado}")
+        print(f"ww: {ww}")
     ww_results = parse_ww()
     hado_results = parse_hado()
 
-    for key in set(list(hado_results.keys()) + list(ww_results.keys())):
-        print(f"ID:{key}\tTrivy: {hado_results[key]}\tWW: {ww_results[key]}")
+    problematic = set()
 
+    for key in relevant_ids:
+        print(f"ID:{key}\tHado: {len(hado_results[key])}\tWW: {len(ww_results[key])}")
+        false_positives = [problematic.add(f) for f in ww_results[key] if f not in hado_results[key]]
+        #print(false_positives[:min(len(false_positives), 5)])
+
+    print(len(problematic))
+    for elem in problematic:
+        print(elem)
