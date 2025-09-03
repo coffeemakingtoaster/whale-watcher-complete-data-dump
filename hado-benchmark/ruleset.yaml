@@ -22,9 +22,77 @@ rules:
   - scope: output
     category: Negative
     instruction: |
+      nodes = command_util.get_every_node_of_instruction("EXPOSE")
+      for node in nodes:
+        ports = command_util.get_expose_node_port_numbers(node)
+        assert(all([p >= 0 and p <= 65535 for p in ports]))
+    id: DL3011
+    target: command
+    description: Valid unix ports in expose
+
+  - scope: output
+    category: Negative
+    instruction: |
       assert(len(command_util.get_every_node_of_instruction("HEALTHCHECK")) <= 1)
     id: DL3012
     target: command
+
+  - scope: output
+    category: Negative
+    instruction: |
+      def is_allowed(source):
+        # url is allowed
+        if source.startswith("http://") or source.startswith("https://"):
+          return True
+        # repo is allowed
+        if source.startswith("git@"):
+          return True
+        if source.endswith(".tar.gz"):
+          return True
+        return False
+
+      nodes = command_util.get_every_node_of_instruction("ADD")
+      for node in nodes:
+        sources = command_util.get_node_property_string_list(node, "Source")
+        assert([is_allowed(source) for source in sources])
+    id: DL3020
+    description: Only use add for url, repo and archives
+    target: command
+
+  - scope: output
+    category: Negative
+    instruction: |
+      nodes = command_util.get_every_node_of_instruction("COPY")
+      for node in nodes:
+        sources = command_util.get_node_property_string_list(node, "Source")
+        if len(sources) == 1:
+          continue
+        destination = command_util.get_node_property_string(node, "Destination")
+        assert(destination.endswith("/"))
+    id: DL3021
+    target: command
+    description: Copy with more than 2 sources must end in /
+
+  - scope: output
+    category: Negative
+    instruction: |
+      ast_depth = command_util.get_ast_depth()
+      for level in range(ast_depth):
+        nodes = command_util.get_every_node_of_instruction_at_level(level, "COPY")
+        if len(nodes) == 0:
+          continue
+        stage_node = command_util.get_stage_node_at(i)
+        stage_name = command_util.get_stage_name(stage_node)
+        if len(stage_name) == 0:
+          continue
+        for node in nodes:
+          copy_from = command_util.get_node_property_string(node, "From")
+          if len(copy_from) == 0:
+            continue
+          assert(not stage_name == copy_from)
+    id: DL3023
+    target: command
+    description: FROM should not reference own stage
 
   - scope: output
     category: Negative
@@ -61,12 +129,17 @@ rules:
     target: command
     description: Only one entrypoint
 
+  - scope: output
+    category: Negative
+    instruction: |
+      forbidden_list = ["ONBUILD", "FROM", "MAINTAINER"]
+      nodes = command_util.get_every_node_of_instruction("ONBUILD")
+      for node in nodes:
+        instruction = command_util.get_instruction_from_onbuild(node)
+        assert(command_util.get_node_instruction_string(instruction) not in forbidden_list)
+    id: DL4004
+    target: command
+    description: Onbuild, from and maintainer are not allowed in onbuild
 
-#DL3011                   & Valid UNIX ports range from 0 to 65535. & Placeholder \\
-#DL3020                   & Use `COPY` instead of `ADD` for files and folders. & Placeholder \\
-#DL3021                   & `COPY` with more than 2 arguments requires the last argument to end with `/`. & Placeholder \\
-#DL3023                   & `COPY --from` cannot reference its own `FROM` alias. & Placeholder \\
-#DL3043                   & `ONBUILD`, `FROM` or `MAINTAINER` triggered from within `ONBUILD` instruction. & Placeholder \\
+
 #DL3044                   & Do not refer to an environment variable within the same `ENV` statement where it is defined. & Placeholder \\
-#DL3061                   & Invalid instruction order. Dockerfile must begin with `FROM`, `ARG` or comment. & Placeholder \\
-

@@ -31,19 +31,19 @@ def convert_to_dataset_file(path: str) -> str:
     return path.rstrip(".out")
 
 def parse_hado():
-    violation_results = defaultdict(lambda: [])
+    violation_results = defaultdict(lambda: set())
     all_files = get_filelist("./hado_out/")
     for file in tqdm(all_files, desc="Hadolint parse"):
         with open(file) as f:
             data = json.load(f)
         for entry in data:
             key = entry["code"]
-            violation_results[key].append(convert_to_dataset_file(file))
+            violation_results[key].add(convert_to_dataset_file(file))
 
     return violation_results
 
 def parse_ww():
-    violation_results = defaultdict(lambda: [])
+    violation_results = defaultdict(lambda: set())
     all_files = get_filelist("./ww_out/")
 
     ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
@@ -55,7 +55,7 @@ def parse_ww():
             title_search = re.search(r".*ruleId=([^\s]+)",line, re.IGNORECASE)
             if title_search:
                 rule_id = title_search.group(1)
-                violation_results[rule_id].append(convert_to_dataset_file(file))
+                violation_results[rule_id].add(convert_to_dataset_file(file))
 
     return violation_results
 
@@ -113,9 +113,6 @@ if __name__ == "__main__":
 
     for key in relevant_ids:
         print(f"ID:{key}\tHado: {len(hado_results[key])}\tWW: {len(ww_results[key])}")
-        false_positives = [problematic.add(f) for f in ww_results[key] if f not in hado_results[key]]
+        if len(ww_results[key]) > 0:
+            print([f for f in hado_results[key] if f not in ww_results[key]])
         #print(false_positives[:min(len(false_positives), 5)])
-
-    print(len(problematic))
-    for elem in problematic:
-        print(elem)
