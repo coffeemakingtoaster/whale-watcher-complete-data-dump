@@ -20,7 +20,6 @@ relevant_ids = [
     "DL3026",
     "DL3043",
     "DL3044",
-    "DL3061",
     "DL4000",
     "DL4004",
 ]
@@ -114,5 +113,7 @@ if __name__ == "__main__":
     for key in relevant_ids:
         print(f"ID:{key}\tHado: {len(hado_results[key])}\tWW: {len(ww_results[key])}")
         if len(ww_results[key]) > 0:
-            print([f for f in hado_results[key] if f not in ww_results[key]])
+            #print([f for f in hado_results[key] if f not in ww_results[key]])
+            print([f for f in ww_results[key] if f not in hado_results[key]])
+
         #print(false_positives[:min(len(false_positives), 5)])

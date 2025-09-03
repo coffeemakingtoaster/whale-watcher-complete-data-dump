@@ -15,7 +15,7 @@ rules:
     category: Negative
     instruction: |
       assert(not command_util.uses_command("sudo"))
-    description: No sudo
+    description: No sud)o
     id: DL3004
     target: command
 
@@ -42,19 +42,20 @@ rules:
     instruction: |
       def is_allowed(source):
         # url is allowed
+        source = source.replace('"', "")
         if source.startswith("http://") or source.startswith("https://"):
           return True
         # repo is allowed
         if source.startswith("git@"):
           return True
-        if source.endswith(".tar.gz"):
+        if source.endswith(".tar.gz") or source.endswith(".tar.xz") or source.endswith(".gz") or source.endswith(".zip"):
           return True
         return False
 
       nodes = command_util.get_every_node_of_instruction("ADD")
       for node in nodes:
         sources = command_util.get_node_property_string_list(node, "Source")
-        assert([is_allowed(source) for source in sources])
+        assert(all([is_allowed(source) for source in sources]))
     id: DL3020
     description: Only use add for url, repo and archives
     target: command
@@ -81,7 +82,7 @@ rules:
         nodes = command_util.get_every_node_of_instruction_at_level(level, "COPY")
         if len(nodes) == 0:
           continue
-        stage_node = command_util.get_stage_node_at(i)
+        stage_node = command_util.get_stage_node_at(level)
         stage_name = command_util.get_stage_name(stage_node)
         if len(stage_name) == 0:
           continue
