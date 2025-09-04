@@ -108,12 +108,5 @@ if __name__ == "__main__":
     ww_results = parse_ww()
     hado_results = parse_hado()
 
-    problematic = set()
-
     for key in relevant_ids:
         print(f"ID:{key}\tHado: {len(hado_results[key])}\tWW: {len(ww_results[key])}")
-        if len(ww_results[key]) > 0:
-            #print([f for f in hado_results[key] if f not in ww_results[key]])
-            print([f for f in hado_results[key] if f not in ww_results[key]])
-
-        #print(false_positives[:min(len(false_positives), 5)])
