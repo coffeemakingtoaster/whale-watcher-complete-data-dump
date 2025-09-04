@@ -115,6 +115,34 @@ rules:
   - scope: output
     category: Negative
     instruction: |
+      def allowed(key, value):
+        # fstrings dont work here in this environment for some reason
+        if "${"+key+"}" in value:
+          return False
+        if f"${key}" not in value:
+          return True
+        # contains the variable without extension 
+        # or a variable with the key as prefix?
+        if value.endswith(f"${key}"):
+          return False
+        print(f"Char: {value[value.find(f"${key}") + len(key) + 1]}")
+        return value[value.find(f"${key}") + len(key) + 1] != " "
+
+      nodes = command_util.get_every_node_of_instruction("ENV")
+      for node in nodes:
+        assign = command_util.get_node_property_string_map(node, "Pairs")
+        for key in assign.keys():
+          for lookup in assign.keys():
+            if lookup == key:
+              continue
+            assert(allowed(key, assign[lookup]))
+    id: DL3044
+    target: command
+    description: env should not reference self
+
+  - scope: output
+    category: Negative
+    instruction: |
       nodes = command_util.get_every_node_of_instruction("MAINTAINER")
       assert(len(nodes) == 0)
     id: DL4000
@@ -141,6 +169,3 @@ rules:
     id: DL4004
     target: command
     description: Onbuild, from and maintainer are not allowed in onbuild
-
-
-#DL3044                   & Do not refer to an environment variable within the same `ENV` statement where it is defined. & Placeholder \\
