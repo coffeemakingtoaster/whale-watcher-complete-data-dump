@@ -3,36 +3,313 @@
 
 name: Trivy test
 rules:
+
+  - scope: output
+    category: Negative
+    instruction: |
+      ast_depth = command_util.get_ast_depth()
+      seen = set()
+      for level in range(ast_depth):
+        stage_node = command_util.get_stage_node_at(level)
+        stage_name = command_util.get_stage_name(stage_node)
+        stage_image = command_util.get_stage_image(stage_node)
+        components = stage_image.split(":")
+        image = components[0]
+        if len(components) > 1:
+          tag = components[1]
+          assert(tag != "latest")
+          seen.add(stage_name)
+        else:
+          if image in seen:
+            seen.add(stage_name)
+            continue
+          # No tag and image is not previous stage
+          assert(False)
+    description: Specify tag
+    id: DS001
+    target: command
+
+  - scope: output
+    category: Negative
+    instruction: |
+      def is_allowed(source):
+        # url is allowed
+        source = source.replace('"', "")
+        if source.startswith("http://") or source.startswith("https://"):
+          return True
+        # repo is allowed
+        if source.startswith("git@"):
+          return True
+        if source.endswith(".tar.gz") or source.endswith(".tar.xz") or source.endswith(".gz") or source.endswith(".zip"):
+          return True
+        return False
+
+      nodes = command_util.get_every_node_of_instruction("ADD")
+      for node in nodes:
+        sources = command_util.get_node_property_string_list(node, "Source")
+        assert(all([is_allowed(source) for source in sources]))
+    id: DS005
+    description: Only use add for url, repo and archives
+    target: command
+
+  - scope: output
+    category: Negative
+    instruction: |
+      assert(command_util.command_always_has_param("apt-get install","-y"))
+    description: Ensure that apt get has the -y flag
+    id: DS021
+    target: command
+
+  - scope: output
+    category: Negative
+    instruction: |
+      ast_depth = command_util.get_ast_depth()
+      for level in range(ast_depth):
+        nodes = command_util.get_every_node_of_instruction_at_level(level, "COPY")
+        if len(nodes) == 0:
+          continue
+        stage_node = command_util.get_stage_node_at(level)
+        stage_name = command_util.get_stage_name(stage_node)
+        if len(stage_name) == 0:
+          continue
+        for node in nodes:
+          copy_from = command_util.get_node_property_string(node, "From")
+          if len(copy_from) == 0:
+            continue
+          assert(not stage_name == copy_from)
+    id: DS006
+    target: command
+    description: FROM should not reference own stage
+
+  - scope: output
+    category: Negative
+    instruction: |
+      nodes = command_util.get_every_node_of_instruction("COPY")
+      for node in nodes:
+        if command_util.get_node_property_bool(node, "IsHeredoc"):
+          continue
+        sources = command_util.get_node_property_string_list(node, "Source")
+        if len(sources) < 2:
+          continue
+        destination = command_util.get_node_property_string(node, "Destination")
+        assert(destination.endswith("/"))
+    id: DS011
+    target: command
+    description: Copy with more than 2 sources must end in /
+
+  - scope: output
+    category: Negative
+    instruction: |
+      nodes = command_util.get_every_node_of_instruction("MAINTAINER")
+      assert(len(nodes) == 0)
+    id: DS022
+    target: command
+    description: No MAINTAINER due to deprecation
+ 
   - scope: output
     category: Negative
     instruction: |
       assert(command_util.command_always_has_param("apt-get install","--no-install-recommends"))
-    description: Ensure that apt always skips recommends
-    id: apt_get_skip_recommends
+    description: Ensure that apt get always skips recommends
+    id: DS029
     target: command
-    long_description: |
-      Don't install unwanted recommended packages
+
+  - scope: output
+    category: negative
+    instruction: |
+      if command_util.uses_command("apk"):
+        assert(command_util.command_always_has_param("apk add","--no-cache"))
+        assert(fs_util.look_for_file("/etc/apk/cache") == -1)
+    description: ensure that apk doesn't use cache
+    id: DS025
+    target: fs
 
   - scope: output
     category: Negative
     instruction: |
-      assert(command_util.command_always_has_param("apt install","--no-install-recommends"))
-    description: Ensure that apt always skips recommends
-    id: apt_skip_recommends
-    target: command
-    long_description: |
-      Don't install unwanted recommended packages
+      install_commands = ["dnf install", "dnf in", "dnf reinstall", "dnf rei", "dnf install-n", "dnf install-na", "dnf install-nevra"]
+      if any([command_util.uses_command(cmd) for cmd in install_commands]):
+        assert(command_util.uses_command("dnf clean all"))
+        assert(fs_util.look_for_file("/var/cache/dnf") == -1)
+    description: Clean dnf cache
+    id: DS019
+    target: fs
 
   - scope: output
     category: Negative
     instruction: |
-      assert(len(command_util.get_every_node_of_instruction("HEALTHCHECK")) > 1)
-    id: healthcheck defined
+      install_commands = ["microdnf install", "microdnf reinstall"]
+      if any([command_util.uses_command(cmd) for cmd in install_commands]):
+        #assert(command_util.uses_command("microdnf clean all"))
+        assert(command_util.uses_command("microdnf clean"))
+    description: Clean microdnf cache
+    id: DS027
     target: command
 
   - scope: output
     category: Negative
     instruction: |
-      assert(len(command_util.get_every_node_of_instruction("HEALTHCHECK")) < 2)
-    id: No multiple healthchecks
+      install_commands = ["zypper in", "zypper remove", "zypper rm", "zypper source-install", "zypper si", "zypper patch", "zypper install"]
+      if any([command_util.uses_command(cmd) for cmd in install_commands]):
+        assert(command_util.uses_command("zypper clean") or command_util.uses_command("zypper cc"))
+    description: Clean zypper cache
+    id: DS020
     target: command
+
+  - scope: output
+    category: Negative
+    instruction: |
+      ast_depth = command_util.get_ast_depth()
+      for level in range(ast_depth):
+        nodes = command_util.get_every_node_of_instruction_at_level(level, "CMD")
+        assert(len(nodes) < 2)
+    description: Only one CMD statement
+    id: DS016
+    target: command
+
+  - scope: output
+    category: Negative
+    instruction: |
+      ast_depth = command_util.get_ast_depth()
+      for level in range(ast_depth):
+        nodes = command_util.get_every_node_of_instruction_at_level(level, "ENTRYPOINT")
+        assert(len(nodes) < 2)
+    description: Only one ENTRYPOINT statement
+    id: DS007
+    target: command
+
+  - scope: output
+    category: Negative
+    instruction: |
+      ast_depth = command_util.get_ast_depth()
+      for level in range(ast_depth):
+        nodes = command_util.get_every_node_of_instruction_at_level(level, "HEALTHCHECK")
+        assert(len(nodes) < 2)
+    description: Only one HEALTHCHECK statement
+    id: DS023
+    target: command
+
+  - scope: output
+    category: Negative
+    instruction: |
+      # TODO: Healthcheck check against image better?
+      assert(len(command_util.get_every_node_of_instruction("HEALTHCHECK")) > 0)
+    id: DS026
+    target: command
+    description: Should define healthcheck
+
+  - scope: output
+    category: Negative
+    instruction: |
+      nodes = command_util.get_every_node_of_instruction("EXPOSE")
+      for node in nodes:
+        ports = command_util.get_expose_node_port_numbers(node)
+        assert(all([p != 22 for p in ports]))
+    id: DS004
+    target: command
+    description: No expose port 22
+
+  - scope: output
+    category: Negative
+    instruction: |
+      blacklist = ["proc", "boot", "dev", "initrd", "lost+found"]
+      nodes = command_util.get_every_node_of_instruction("WORKDIR")
+      for node in nodes:
+        directory = command_util.get_node_property_string(node, "Path")
+        assert(all([not directory.startswith(forbidden) for forbidden in blacklist]))
+    id: DS030
+    target: command
+    description: No sys directory as workdir
+
+  - scope: output
+    category: Negative
+    instruction: |
+      ast_depth = command_util.get_ast_depth()
+      nodes = command_util.get_every_node_of_instruction_at_level(ast_depth - 1, "USER")
+      assert(len(nodes) > 0)
+      user = command_util.get_node_property_string(nodes[-1], "User")
+      assert(user != "root")
+    id: DS002
+    target: command
+    description: No root
+
+  - scope: output
+    category: Negative
+    instruction: |
+      assert(not command_util.uses_command("apt-get dist-upgrade"))
+    id: DS024
+    target: command
+    description: No dist upgrade in docker
+
+  - scope: output
+    category: Negative
+    instruction: |
+      # This rule is absolutely nonsensical, I refuse to implement this
+      assert(True)
+    id: DS013
+    target: command
+    description: No cd in dockerfile?
+
+  - scope: output
+    category: Negative
+    instruction: |
+      assert(not command_util.uses_command("sudo"))
+    description: No sudo
+    id: DS010
+    target: command
+
+  - scope: output
+    category: Negative
+    instruction: |
+      # do not use both wget AND curl
+      if command_util.uses_command("wget"):
+        assert( not command_util.uses_command("curl"))
+    description: No wget and curl in the same Dockerfile
+    id: DS014
+    target: command
+
+  - scope: output
+    category: Negative
+    instruction: |
+      ast_depth = command_util.get_ast_depth()
+      seen = set()
+      for level in range(ast_depth):
+        stage_node = command_util.get_stage_node_at(level)
+        stage_name = command_util.get_stage_name(stage_node)
+        assert(stage_name not in seen)
+        seen.add(stage_name)
+    id: DS012
+    target: command
+    description: No duplicate alias
+
+  - scope: output
+    category: Negative
+    instruction: |
+      nodes = command_util.get_every_node_of_instruction("EXPOSE")
+      for node in nodes:
+        ports = command_util.get_expose_node_port_numbers(node)
+        assert(all([p >= 0 and p <= 65535 for p in ports]))
+    id: DS008
+    target: command
+    description: Valid unix ports in expose
+
+
+  - scope: output
+    category: Negative
+    instruction: |
+      nodes = command_util.get_every_node_of_instruction("WORKDIR")
+      for node in nodes:
+        p = command_util.get_node_property_string(node, "Path")
+        assert(p.startswith("/") or p.startswith("$"))
+    description: Use absolute workdir
+    id: DS009
+    target: command
+
+  - scope: output
+    category: Negative
+    instruction: |
+      if command_util.uses_command("yum"):
+        assert(fs_util.look_for_file("/var/cache/yum") == -1)
+    description: Clean yum cache
+    id: DS015
+    target: fs

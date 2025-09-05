@@ -4,48 +4,63 @@ import shlex
 import time
 from collections import defaultdict
 import json
+import re
+from tqdm import tqdm
+
+def get_filelist(path: str):
+    return [os.path.join(path, f) for f in os.listdir(path) if os.path.isfile(os.path.join(path, f))]
+
+def extract_source_information(path: str) -> str:
+    path = path.replace("./ww_out/", "")
+    path = path.replace("./trivy_out/", "")
+    path = path.removesuffix("_dockerfile.out")
+    path = path.removesuffix("_image.out")
+    return path.removesuffix(".out")
+
 
 def parse_trivy():
-    violation_results = defaultdict(lambda: 0)
-    all_files = os.listdir("./trivy_out/")
-    for res in all_files:
-        filepath = os.path.join("./trivy_out/", res)
+    violation_results = defaultdict(lambda: set())
+    all_files = get_filelist("./trivy_out/")
+    for filepath in all_files:
         with open(filepath) as f:
             data = json.load(f)
         if not "Results" in data:
             continue
         results = data["Results"]
+        filepath = extract_source_information(filepath)
         for entry in results:
             if entry["MisconfSummary"]["Failures"] == 0:
                 continue
             for violation in entry["Misconfigurations"]:
-                key = violation["Title"]
-                violation_results[key] += 1
+                key = violation["ID"]
+                violation_results[key].add(filepath)
 
     return violation_results
 
 def parse_ww():
-    violation_results = defaultdict(lambda: 0)
-    all_files = os.listdir("./ww_out/")
-    for res in all_files:
-        filepath = os.path.join("./ww_out/", res)
-        with open(filepath) as f:
+    violation_results = defaultdict(lambda: set())
+    all_files = get_filelist("./ww_out/")
+
+    ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+    for file in tqdm(all_files, desc="ww parse"):
+        with open(file) as f:
             lines = f.readlines()
         for line in lines:
-            if not "ruleId=" in line:
-                continue
-            line = line.strip()
-            ind = line.find("ruleId=")
-            line = line[ind:]
-            line = line.lstrip("ruleId=")
-            rule_id = line.replace('"', "")
-            violation_results[rule_id] += 1
-        
+            line = ansi_escape.sub('', line)
+            title_search = re.search(r".*ruleId=([^\s]+)",line, re.IGNORECASE)
+            if title_search:
+                rule_id = title_search.group(1)
+                violation_results[rule_id].add(extract_source_information(file))
+
     return violation_results
 
 def run_whale_watcher():
     src_dir = "./scraper/testdata"
     out_dir = "./ww_out"
+
+    if os.path.exists(out_dir):
+        print("ww skipped, out dir already present")
+        return 0
 
     os.makedirs(out_dir, exist_ok=True)
 
@@ -70,6 +85,10 @@ def run_whale_watcher():
 def run_trivy():
     src_dir = "./scraper/testdata"
     out_dir = "./trivy_out"
+
+    if os.path.exists(out_dir):
+        print("trivy skipped, out dir already present")
+        return 0
 
     os.makedirs(out_dir, exist_ok=True)
 
@@ -119,8 +138,15 @@ def main():
     trivy_res = parse_trivy()
     ww_res = parse_ww()
 
-    for key in set(list(trivy_res.keys()) + list(ww_res.keys())):
-        print(f"ID:{key}\tTrivy: {trivy_res[key]}\tWW: {ww_res[key]}")
+    keys = set(list(trivy_res.keys()) + list(ww_res.keys()))
+
+    for key in sorted(list(keys)):
+        if not key.startswith("DS"):
+            continue
+        print(f"ID:{key}\tTrivy: {len(trivy_res[key])}\tWW: {len(ww_res[key])}")
+        print([f for f in trivy_res[key] if f not in ww_res[key]])
+        #print([f for f in ww_res[key] if f not in trivy_res[key]])
+
 
 
 if __name__ == "__main__":

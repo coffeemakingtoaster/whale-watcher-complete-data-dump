@@ -97,16 +97,19 @@ def run_whale_watcher(filelist):
     return time.time() - start
 
 if __name__ == "__main__":
+    hado = 0
+    ww = 0
     if exists("./ww_out/") and exists("./hado_out/"):
         print("Skipping benchmark execution, outputs already present")
     else:
         files = get_filelist("./dataset/")
         hado = run_hadolint(filelist=files)
         ww = run_whale_watcher(filelist=files)
-        print(f"hado: {hado}")
-        print(f"ww: {ww}")
     ww_results = parse_ww()
     hado_results = parse_hado()
+
+    print(f"hado: {hado}")
+    print(f"ww: {ww}")
 
     for key in relevant_ids:
         print(f"ID:{key}\tHado: {len(hado_results[key])}\tWW: {len(ww_results[key])}")
