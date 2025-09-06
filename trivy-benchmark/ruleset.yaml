@@ -313,3 +313,25 @@ rules:
     description: Clean yum cache
     id: DS015
     target: fs
+
+  - scope: output
+    category: Negative
+    instruction: |
+      def if_a_also_b(a,b):
+        if any([command_util.uses_command(d) for d in a]):
+          assert(any([command_util.uses_command(c) for c in b]))
+      package_managers  = ["apt-get", "apt", "yum", "apk", "dnf", "zypper"]
+      update_cmds = ["update", "up"]
+      install_cmds = ["upgrade", "install", "source-install", "reinstall", "groupinstall", "localinstall", "add"]
+      for manager in package_managers:
+        if_a_also_b([f"{manager} {update}" for update in update_cmds], [f"{manager} {install}" for install in install_cmds])
+    description: No update without install
+    id: DS017
+    target: command
+
+  - scope: output
+    category: Negative
+    instruction: |
+    description: Contains leaked secrets
+    id: DS031
+    target: command

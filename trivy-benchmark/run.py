@@ -141,10 +141,11 @@ def main():
     keys = set(list(trivy_res.keys()) + list(ww_res.keys()))
 
     for key in sorted(list(keys)):
-        if not key.startswith("DS"):
+        # filter out kubernetes rules
+        if key.startswith("KSV"):
             continue
         print(f"ID:{key}\tTrivy: {len(trivy_res[key])}\tWW: {len(ww_res[key])}")
-        print([f for f in trivy_res[key] if f not in ww_res[key]])
+        #print([f for f in trivy_res[key] if f not in ww_res[key]])
         #print([f for f in ww_res[key] if f not in trivy_res[key]])
 
 
