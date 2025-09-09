@@ -12,7 +12,7 @@ rules:
       for level in range(ast_depth):
         stage_node = command_util.get_stage_node_at(level)
         stage_name = command_util.get_stage_name(stage_node)
-        stage_image = command_util.get_stage_image(stage_node)
+        stage_image = command_util.get_stage_image(stage_node).strip()
         components = stage_image.split(":")
         image = components[0]
         if len(components) > 1:
@@ -28,6 +28,7 @@ rules:
           # No support for variable images as of now 
           if image.startswith("$"):
             continue
+          print(image)
           # No tag and image is not previous stage
           assert(False)
     description: Specify tag
@@ -60,7 +61,8 @@ rules:
   - scope: output
     category: Negative
     instruction: |
-      assert(command_util.command_always_has_param("apt-get install","-y"))
+      allowed_params = ["-y","-qy", "-yq","-qqy"]
+      assert(any([command_util.command_always_has_param("apt-get install",p) for p in allowed_params]))
     description: Ensure that apt get has the -y flag
     id: DS021
     target: command
@@ -249,8 +251,15 @@ rules:
   - scope: output
     category: Negative
     instruction: |
-      # This rule is absolutely nonsensical, I refuse to implement this
-      assert(True)
+      def startswithcd(cmds):
+        for cmd in cmds:
+          assert(not cmd.startswith("cd"))
+      # This rule is absolutely nonsensical
+      nodes = command_util.get_every_node_of_instruction("RUN")
+      for node in nodes:
+        cmds = command_util.get_node_property_string_list(node, "Cmd")
+        cmd = " ".join(cmds)
+        startswithcd(cmd.split(" && "))
     id: DS013
     target: command
     description: No cd in dockerfile?
@@ -338,18 +347,17 @@ rules:
     instruction: |
       blacklist = ["AWS_ACCESS_KEY_ID","AWS_SECRET_ACCESS_KEY","AWS_SESSION_TOKEN","AZURE_CLIENT_ID","AZURE_CLIENT_SECRET","GITHUB_TOKEN", "GH_TOKEN","GH_ENTERPRISE_TOKEN","GITHUB_ENTERPRISE_TOKEN","OPENAI_API_KEY", "HF_TOKEN","DIGITALOCEAN_ACCESS_TOKEN","DOCKERHUB_PASSWORD","FIREBASE_TOKEN","CI_DEPLOY_PASSWORD","GOOGLE_API_KEY","LANGSMITH_API_KEY","LANGCHAIN_API_KEY","HEROKU_API_KEY", "GPG_KEY"]
       blacklist_commands = ["aws configure set aws_access_key_id","aws configure set aws_secret_access_key","gcloud auth activate-service-account"]
+      blacklist_variable_parts = ["PASSWORD","KEY"]
 
-      arg_nodes = command_util.get_every_node_of_instruction("ARG")
-      env_nodes = command_util.get_every_node_of_instruction("ENV")
-      for node in arg_nodes:
-        keys = command_util.get_node_property_string_map_keys(node, "Pairs")
-        for key in keys:
-          assert(key not in blacklist)
-
-      for node in env_nodes:
-        keys = command_util.get_node_property_string_map_keys(node, "Pairs")
-        for key in keys:
-          assert(key not in blacklist)
+      def assess_nodes(nodes):
+        for node in nodes:
+          keys = command_util.get_node_property_string_map_keys(node, "Pairs")
+          for key in keys:
+            assert(key not in blacklist)
+            for part in blacklist_variable_parts:
+              assert(part not in key)
+      assess_nodes(command_util.get_every_node_of_instruction("ARG"))
+      assess_nodes(command_util.get_every_node_of_instruction("ENV"))
 
       if command_util.uses_command("az login"):
         assert(not command_util.command_always_has_param("az login", "--password"))

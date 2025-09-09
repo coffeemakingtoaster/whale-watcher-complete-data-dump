@@ -126,7 +126,7 @@ def run(cmd, cwd=None, shell=False, executable="/bin/bash"):
 def main():
     print("Preparing data")
 
-    run("sh ./setup.sh", cwd="./scraper")
+    #run("sh ./setup.sh", cwd="./scraper")
 
     print("Run whalewatcher")
 
