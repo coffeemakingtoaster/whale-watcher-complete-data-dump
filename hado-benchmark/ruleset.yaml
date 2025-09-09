@@ -1,4 +1,4 @@
-name: Big Ruleset
+name: Hado Ruleset
 rules:
   - scope: output
     category: Negative
