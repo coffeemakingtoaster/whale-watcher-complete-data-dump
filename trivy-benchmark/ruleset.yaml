@@ -23,6 +23,11 @@ rules:
           if image in seen:
             seen.add(stage_name)
             continue
+          if image == "scratch":
+            continue
+          # No support for variable images as of now 
+          if image.startswith("$"):
+            continue
           # No tag and image is not previous stage
           assert(False)
     description: Specify tag
@@ -119,7 +124,7 @@ rules:
     instruction: |
       if command_util.uses_command("apk"):
         assert(command_util.command_always_has_param("apk add","--no-cache"))
-        assert(fs_util.look_for_file("/etc/apk/cache") == -1)
+      assert(fs_util.look_for_file("/etc/apk/cache") == -1)
     description: ensure that apk doesn't use cache
     id: DS025
     target: fs
@@ -130,7 +135,7 @@ rules:
       install_commands = ["dnf install", "dnf in", "dnf reinstall", "dnf rei", "dnf install-n", "dnf install-na", "dnf install-nevra"]
       if any([command_util.uses_command(cmd) for cmd in install_commands]):
         assert(command_util.uses_command("dnf clean all"))
-        assert(fs_util.look_for_file("/var/cache/dnf") == -1)
+      assert(fs_util.look_for_file("/var/cache/dnf") == -1)
     description: Clean dnf cache
     id: DS019
     target: fs
@@ -308,8 +313,7 @@ rules:
   - scope: output
     category: Negative
     instruction: |
-      if command_util.uses_command("yum"):
-        assert(fs_util.look_for_file("/var/cache/yum") == -1)
+      assert(fs_util.look_for_file("/var/cache/yum") == -1)
     description: Clean yum cache
     id: DS015
     target: fs
@@ -332,6 +336,31 @@ rules:
   - scope: output
     category: Negative
     instruction: |
+      blacklist = ["AWS_ACCESS_KEY_ID","AWS_SECRET_ACCESS_KEY","AWS_SESSION_TOKEN","AZURE_CLIENT_ID","AZURE_CLIENT_SECRET","GITHUB_TOKEN", "GH_TOKEN","GH_ENTERPRISE_TOKEN","GITHUB_ENTERPRISE_TOKEN","OPENAI_API_KEY", "HF_TOKEN","DIGITALOCEAN_ACCESS_TOKEN","DOCKERHUB_PASSWORD","FIREBASE_TOKEN","CI_DEPLOY_PASSWORD","GOOGLE_API_KEY","LANGSMITH_API_KEY","LANGCHAIN_API_KEY","HEROKU_API_KEY", "GPG_KEY"]
+      blacklist_commands = ["aws configure set aws_access_key_id","aws configure set aws_secret_access_key","gcloud auth activate-service-account"]
+
+      arg_nodes = command_util.get_every_node_of_instruction("ARG")
+      env_nodes = command_util.get_every_node_of_instruction("ENV")
+      for node in arg_nodes:
+        keys = command_util.get_node_property_string_map_keys(node, "Pairs")
+        for key in keys:
+          assert(key not in blacklist)
+
+      for node in env_nodes:
+        keys = command_util.get_node_property_string_map_keys(node, "Pairs")
+        for key in keys:
+          assert(key not in blacklist)
+
+      if command_util.uses_command("az login"):
+        assert(not command_util.command_always_has_param("az login", "--password"))
+        assert(not command_util.command_always_has_param("az login", "--federated-token"))
+
+      if command_util.uses_command("doctl auth init"):
+        assert(not command_util.command_always_has_param("doctl auth init", "--access-token"))
+        assert(not command_util.command_always_has_param("doctl auth init", "-t"))
+
+      for command in blacklist_commands:
+        assert(not command_util.uses_command(command))
     description: Contains leaked secrets
     id: DS031
     target: command

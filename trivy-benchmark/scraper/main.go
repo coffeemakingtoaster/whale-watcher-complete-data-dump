@@ -76,7 +76,12 @@ func loadTorToPath(image, destination, format string) error {
 		return err
 	}
 
-	img, err := remote.Image(ref)
+	platform := v1.Platform{
+		Architecture: "amd64",
+		OS:           "linux",
+	}
+
+	img, err := remote.Image(ref, remote.WithPlatform(platform))
 	if err != nil {
 		return err
 	}

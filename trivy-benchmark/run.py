@@ -22,6 +22,8 @@ def parse_trivy():
     violation_results = defaultdict(lambda: set())
     all_files = get_filelist("./trivy_out/")
     for filepath in all_files:
+        if filepath.endswith("_image.out"):
+            continue
         with open(filepath) as f:
             data = json.load(f)
         if not "Results" in data:
@@ -145,8 +147,8 @@ def main():
         if key.startswith("KSV"):
             continue
         print(f"ID:{key}\tTrivy: {len(trivy_res[key])}\tWW: {len(ww_res[key])}")
-        #print([f for f in trivy_res[key] if f not in ww_res[key]])
-        #print([f for f in ww_res[key] if f not in trivy_res[key]])
+        print([f for f in trivy_res[key] if f not in ww_res[key]])
+        print([f for f in ww_res[key] if f not in trivy_res[key]])
 
 
 
