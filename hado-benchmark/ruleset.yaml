@@ -130,12 +130,12 @@ rules:
 
       nodes = command_util.get_every_node_of_instruction("ENV")
       for node in nodes:
-        assign = command_util.get_node_property_string_map(node, "Pairs")
-        for key in assign.keys():
-          for lookup in assign.keys():
+        keys = command_util.get_node_property_string_map_keys(node, "Pairs")
+        for key in keys:
+          for lookup in keys:
             if lookup == key:
               continue
-            assert(allowed(key, assign[lookup]))
+            assert(allowed(key, command_util.get_node_property_string_map_keys(node, "Pairs", lookup)))
     id: DL3044
     target: command
     description: env should not reference self
