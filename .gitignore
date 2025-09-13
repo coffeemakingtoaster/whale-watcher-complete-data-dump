@@ -2,3 +2,4 @@
 **/*/trivy_out
 **/deduplicated-sources-gold
 **/*_out
+**/out*.log
