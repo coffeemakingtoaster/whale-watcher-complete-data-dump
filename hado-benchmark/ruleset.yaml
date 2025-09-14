@@ -135,7 +135,7 @@ rules:
           for lookup in keys:
             if lookup == key:
               continue
-            assert(allowed(key, command_util.get_node_property_string_map_keys(node, "Pairs", lookup)))
+            assert(allowed(key, command_util.get_node_property_string_map_value(node, "Pairs", lookup)))
     id: DL3044
     target: command
     description: env should not reference self
