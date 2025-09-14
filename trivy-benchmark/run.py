@@ -7,6 +7,8 @@ import json
 import re
 from tqdm import tqdm
 
+rule_ids = ["DS005","DS029","DS021","DS006","DS011","DS001","DS031","DS022","DS025","DS019","DS027","DS020","DS016","DS007","DS023","DS026","DS004","DS030","DS002","DS024","DS013","DS010","DS014","DS012","DS008","DS017","DS009","DS015"]
+
 def get_filelist(path: str):
     return [os.path.join(path, f) for f in os.listdir(path) if os.path.isfile(os.path.join(path, f))]
 
@@ -116,7 +118,6 @@ def run_trivy():
 
 
 def run(cmd, cwd=None, shell=False, executable="/bin/bash"):
-    print(f"\n>>> Running: {cmd}")
     if shell:
         subprocess.run(cmd, shell=True, check=True, cwd=cwd, executable=executable)
     else:
@@ -140,16 +141,11 @@ def main():
     trivy_res = parse_trivy()
     ww_res = parse_ww()
 
-    keys = set(list(trivy_res.keys()) + list(ww_res.keys()))
-
-    for key in sorted(list(keys)):
+    for key in sorted(rule_ids):
         # filter out kubernetes rules
-        if key.startswith("KSV"):
-            continue
         print(f"ID:{key}\tTrivy: {len(trivy_res[key])}\tWW: {len(ww_res[key])}")
-        print([f for f in trivy_res[key] if f not in ww_res[key]])
-        print([f for f in ww_res[key] if f not in trivy_res[key]])
-
+        #print([f for f in trivy_res[key] if f not in ww_res[key]])
+        #print([f for f in ww_res[key] if f not in trivy_res[key]])
 
 
 if __name__ == "__main__":
